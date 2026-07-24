@@ -36,6 +36,24 @@ public class Main {
         /** 3. ML early-warning classifier (ALGORITHM 8) */
         System.out.println("\n>>> Early-Warning Classifier (ALGORITHM 8: logistic regression) <<<\n");
         trainClassifier(flagship);
+
+        /** 4. Monte Carlo comparison of risk controls (ALGORITHM 3 + 9) */
+        System.out.println("\n>>> Monte Carlo Risk-Control Comparison (ALGORITHM 3: N=40 seeds/config) <<<\n");
+        int N = 40;
+        long baseSeed = 1000;
+        MonteCarloRunner.ConfigSummary base = MonteCarloRunner.runConfig("Baseline (no controls)", N, baseSeed, false, false);
+        MonteCarloRunner.ConfigSummary withLuld = MonteCarloRunner.runConfig("LULD circuit breaker", N, baseSeed, true, false);
+        MonteCarloRunner.ConfigSummary withVpin = MonteCarloRunner.runConfig("VPIN preemptive halt", N, baseSeed, false, true);
+        MonteCarloRunner.ConfigSummary withBoth = MonteCarloRunner.runConfig("LULD + VPIN combined", N, baseSeed, true, true);
+
+        printSummaryTable(List.of(base, withLuld, withVpin, withBoth));
+
+        System.out.println();
+        MonteCarloRunner.printComparison(base, withLuld);
+        MonteCarloRunner.printComparison(base, withVpin);
+        MonteCarloRunner.printComparison(base, withBoth);
+
+        System.out.println("\nDone. CSV time series written to ./data/*.csv for external plotting.");
     }
 
     // Flagship CSVs Export Helper
@@ -160,6 +178,16 @@ public class Main {
         System.out.println("Standardized feature weights (larger |w| = more predictive, post-standardization):");
         for (int i = 0; i < w.length; i++) {
             System.out.printf("  %-22s %+.4f%n", names[i], w[i]);
+        }
+    }
+
+    // Summary Table Output Helper
+    private static void printSummaryTable(List<MonteCarloRunner.ConfigSummary> summaries) {
+        System.out.printf("%-25s %12s %14s %12s %14s %12s%n",
+                "Configuration", "CrashFreq%", "MeanDD%", "StdDD%", "MeanRecov(s)", "MeanHalfLife(m)");
+        for (var s : summaries) {
+            System.out.printf("%-25s %12.1f %14.2f %12.2f %14.1f %12.2f%n",
+                    s.label, s.crashFrequencyPct, s.meanDrawdownPct, s.stdDrawdownPct, s.meanRecoverySec, s.meanHalfLifeMin);
         }
     }
 }
