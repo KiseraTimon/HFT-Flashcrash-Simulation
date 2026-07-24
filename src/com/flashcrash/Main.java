@@ -1,6 +1,7 @@
 package com.flashcrash;
 
 import com.flashcrash.analytics.VPINCalculator;
+import com.flashcrash.benchmark.PaperBenchmark;
 import com.flashcrash.util.CsvWriter;
 
 import java.io.IOException;
@@ -23,8 +24,10 @@ public class Main {
         RunResult fr = flagship.result;
         System.out.println(fr);
         exportFlagshipCsvs(flagship);
+        printBenchmarkComparison(fr);
     }
 
+    // Flagship CSVs Export Helper
     private static void exportFlagshipCsvs(Scenario.Output out) throws IOException {
         var ctx = out.ctx;
         List<double[]> priceRows = new ArrayList<>();
@@ -46,5 +49,24 @@ public class Main {
         CsvWriter.writeSeries("data/flagship_vpin.csv", new String[]{"time_sec", "vpin"}, vpinRows);
 
         System.out.println("[written data/flagship_timeseries.csv, data/flagship_vpin.csv]");
+    }
+
+    // Benchmark Comparison Helper
+    private static void printBenchmarkComparison(RunResult r) {
+        System.out.println("\n--- Benchmark comparison: simulation vs. published figures ---");
+        System.out.printf("%-45s %15s %15s%n", "Metric", "Simulated", "Published");
+        System.out.printf("%-45s %14.2f%% %14.2f%%%n", "Max intraday drawdown",
+                r.maxDrawdownPct, PaperBenchmark.CRASH_PRICE_DROP_PCT_MIN);
+        System.out.printf("%-45s %13.2fmin %13.1fmin%n", "HFT inventory mean-reversion half-life",
+                r.hftInventoryHalfLifeMinutes, PaperBenchmark.HFT_INVENTORY_HALFLIFE_MINUTES);
+        System.out.printf("%-45s %15d %15d%n", "Max aggregate HFT inventory (scaled units)",
+                r.hftMaxAbsAggregateInventory, (int) Math.round(PaperBenchmark.HFT_TYPICAL_MAX_INVENTORY_CONTRACTS * Scenario.SCALE));
+        System.out.printf("%-45s %14.1f%% %14.1f%%%n", "Sell program max participation rate",
+                r.sellProgramMaxParticipationPct, PaperBenchmark.SELL_PROGRAM_PARTICIPATION_MAX_PCT);
+        System.out.printf("%-45s %15d %15d%n", "Sell program size (scaled contracts)",
+                r.sellProgramExecutedQty, (int) Math.round(PaperBenchmark.SELL_PROGRAM_CONTRACTS * Scenario.SCALE));
+        System.out.println("(Note: contract counts are scaled by a documented factor of " + Scenario.SCALE
+                + " relative to the literal SEC-CFTC figures; percentages and time-based");
+        System.out.println(" quantities are unscaled and directly comparable.)");
     }
 }
