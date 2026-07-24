@@ -1,0 +1,13 @@
+>>> Monte Carlo Risk-Control Comparison (ALGORITHM 3: N=40 seeds/config) <<<
+
+Configuration               CrashFreq%        MeanDD%       StdDD%   MeanRecov(s) MeanHalfLife(m)
+Baseline (no controls)            97.5           8.03         1.76          250.5         0.18
+LULD circuit breaker             100.0           8.22         1.80          265.4         0.26
+VPIN preemptive halt              30.0           4.01         1.82          252.8         0.95
+LULD + VPIN combined              30.0           4.01         1.82          252.8         0.95
+
+  Welch t-test on max drawdown, Baseline (no controls) vs LULD circuit breaker: meanA=8.0305 meanB=8.2151 t=-0.463 df=77.9
+  Welch t-test on max drawdown, Baseline (no controls) vs VPIN preemptive halt: meanA=8.0305 meanB=4.0105 t=10.031 df=77.9
+  Welch t-test on max drawdown, Baseline (no controls) vs LULD + VPIN combined: meanA=8.0305 meanB=4.0105 t=10.031 df=77.9
+
+Done. CSV time series written to ./data/*.csv for external plotting.
