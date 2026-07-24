@@ -3,6 +3,8 @@ package com.flashcrash;
 import com.flashcrash.analytics.HotPotatoNetworkAnalyzer;
 import com.flashcrash.analytics.VPINCalculator;
 import com.flashcrash.benchmark.PaperBenchmark;
+import com.flashcrash.ml.FeatureExtractor;
+import com.flashcrash.ml.LogisticRegression;
 import com.flashcrash.util.CsvWriter;
 
 import java.io.IOException;
@@ -30,6 +32,10 @@ public class Main {
         /** 2. Hot-potato network analysis around the crash window */
         System.out.println("\n>>> Hot-Potato Network Analysis (ALGORITHM 6) <<<\n");
         analyzeHotPotato(flagship);
+
+        /** 3. ML early-warning classifier (ALGORITHM 8) */
+        System.out.println("\n>>> Early-Warning Classifier (ALGORITHM 8: logistic regression) <<<\n");
+        trainClassifier(flagship);
     }
 
     // Flagship CSVs Export Helper
@@ -95,5 +101,65 @@ public class Main {
         System.out.printf("%nTarjan SCC: %d non-trivial strongly-connected components found among %d traders " +
                         "(cycles of contracts changing hands within a closed group -- the hot-potato signature).%n",
                 nontrivial, sccs.size());
+    }
+
+    // ML Classifier & Model
+    private static void trainClassifier(Scenario.Output flagshipOut) {
+        /** Logic:
+         * Pool data across several independent runs so the classifier sees many
+         * distinct crash episodes rather than relying on the single flagship run,
+         * whose one crash near the end of the horizon starved a naive chronological
+         * train/test split of positive test examples. Each run is still split
+         * train(first 70%)/test(last 30%) *within itself* to avoid look-ahead leakage,
+         * then the per-run splits are concatenated across runs.
+         */
+        FeatureExtractor extractor = new FeatureExtractor(2.0, 30.0, 20); // predict a 2% drawdown within 30s
+        List<double[]> trainX = new ArrayList<>(), testX = new ArrayList<>();
+        List<Integer> trainY = new ArrayList<>(), testY = new ArrayList<>();
+
+        int nRunsForTraining = 15;
+        for (int i = 0; i < nRunsForTraining; i++) {
+            Scenario.Output out = (i == 0) ? flagshipOut : Scenario.run(5000 + i, false, false);
+            FeatureExtractor.Dataset ds = extractor.build(out.ctx);
+            if (ds.features.size() < 20) continue;
+            int split = (int) (ds.features.size() * 0.7);
+            trainX.addAll(ds.features.subList(0, split));
+            trainY.addAll(ds.labels.subList(0, split));
+            testX.addAll(ds.features.subList(split, ds.features.size()));
+            testY.addAll(ds.labels.subList(split, ds.labels.size()));
+        }
+
+        if (trainX.size() < 50) {
+            System.out.println("Not enough pooled samples to train a classifier.");
+            return;
+        }
+
+        long positives = trainY.stream().filter(y -> y == 1).count();
+        long testPositives = testY.stream().filter(y -> y == 1).count();
+        System.out.printf("Pooled across %d runs -> training samples: %d (%.1f%% positive) | " +
+                        "Test samples: %d (%.1f%% positive)%n",
+                nRunsForTraining, trainX.size(), 100.0 * positives / trainX.size(),
+                testX.size(), 100.0 * testPositives / testX.size());
+
+        LogisticRegression model = new LogisticRegression(0.01);
+        model.fit(trainX, trainY, 2000, 0.1);
+
+        LogisticRegression.Metrics trainMetrics = model.evaluate(trainX, trainY, 0.5);
+        LogisticRegression.Metrics testMetrics = model.evaluate(testX, testY, 0.5);
+        System.out.println("Train metrics (threshold=0.5): " + trainMetrics);
+        System.out.println("Test  metrics (threshold=0.5): " + testMetrics);
+
+        double bestT = model.bestF1Threshold(trainX, trainY);
+        LogisticRegression.Metrics testAtBest = model.evaluate(testX, testY, bestT);
+        System.out.printf("Test  metrics (F1-optimal threshold=%.2f, chosen on train set): %s%n", bestT, testAtBest);
+        System.out.println("(Crash events are rare -- under 1% of samples -- so accuracy at the default 0.5");
+        System.out.println(" cutoff is misleadingly high; AUC and the F1-optimal threshold are the informative numbers.)");
+
+        double[] w = model.getWeights();
+        String[] names = {"VPIN", "orderBookImbalance", "trailingVolatility", "hftAggInventory", "priceChangeRate"};
+        System.out.println("Standardized feature weights (larger |w| = more predictive, post-standardization):");
+        for (int i = 0; i < w.length; i++) {
+            System.out.printf("  %-22s %+.4f%n", names[i], w[i]);
+        }
     }
 }
