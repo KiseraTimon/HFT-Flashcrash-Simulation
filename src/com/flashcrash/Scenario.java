@@ -105,7 +105,10 @@ public class Scenario {
 
         engine.run(agents, SIM_DURATION_SEC, SNAPSHOT_INTERVAL_SEC, ctx);
 
+        RunResult result = analyze(ctx, seed, largeSeller, luld, vpinHalt, sellQty);
+
         Output out = new Output();
+        out.result = result;
         out.ctx = ctx;
         out.largeSeller = largeSeller;
         out.luld = luld;
@@ -121,5 +124,71 @@ public class Scenario {
         }
     }
 
+    private static RunResult analyze(SimulationContext ctx, long seed, LargeSeller seller,
+                                      LuldCircuitBreaker luld, VpinPreemptiveHalt vpinHalt, int sellQty) {
+        RunResult r = new RunResult();
+        r.seed = seed;
+        r.openPrice = ctx.midPriceSeries.get(0);
+        r.finalPrice = ctx.midPriceSeries.get(ctx.midPriceSeries.size() - 1);
 
+        double runningPeak = r.openPrice;
+        double maxDrawdown = 0;
+        double bottomPrice = r.openPrice;
+        double timeOfBottom = 0;
+        for (int i = 0; i < ctx.sampleTimes.size(); i++) {
+            double p = ctx.midPriceSeries.get(i);
+            runningPeak = Math.max(runningPeak, p);
+            double dd = (runningPeak - p) / runningPeak * 100.0;
+            if (dd > maxDrawdown) {
+                maxDrawdown = dd;
+                bottomPrice = p;
+                timeOfBottom = ctx.sampleTimes.get(i);
+            }
+        }
+        r.maxDrawdownPct = maxDrawdown;
+        r.bottomPrice = bottomPrice;
+        r.timeOfBottomSec = timeOfBottom;
+        r.crashOccurred = maxDrawdown >= PaperBenchmark.CRASH_PRICE_DROP_PCT_MIN;
+
+        // recovery: first time after the bottom that price returns within 1% of open
+        r.recoveryTimeSec = -1;
+        for (int i = 0; i < ctx.sampleTimes.size(); i++) {
+            if (ctx.sampleTimes.get(i) < timeOfBottom) continue;
+            double p = ctx.midPriceSeries.get(i);
+            if (Math.abs(p - r.openPrice) / r.openPrice <= 0.01) {
+                r.recoveryTimeSec = ctx.sampleTimes.get(i) - timeOfBottom;
+                break;
+            }
+        }
+
+        VPINCalculator vpinCalc = new VPINCalculator(150, 15);
+        List<VPINCalculator.VpinPoint> vpinSeries = vpinCalc.compute(ctx.tradeLog);
+        double peakVpin = 0;
+        for (VPINCalculator.VpinPoint p : vpinSeries) peakVpin = Math.max(peakVpin, p.vpin);
+        r.peakVpin = peakVpin;
+
+        InventoryHalfLifeEstimator halfLifeEstimator = new InventoryHalfLifeEstimator();
+        List<Double> invSeries = new ArrayList<>();
+        int maxAbsInv = 0;
+        for (int v : ctx.hftAggregateInventorySeries) maxAbsInv = Math.max(maxAbsInv, v);
+        for (int v : ctx.hftAggregateInventorySeries) invSeries.add((double) v);
+        InventoryHalfLifeEstimator.Result hl = halfLifeEstimator.estimate(invSeries, SNAPSHOT_INTERVAL_SEC);
+        r.hftInventoryHalfLifeMinutes = hl.halfLifeSeconds / 60.0;
+        r.hftMaxAbsAggregateInventory = maxAbsInv;
+
+        r.luldTriggerCount = luld == null ? 0 : luld.triggerCount;
+        r.vpinHaltTriggerCount = vpinHalt == null ? 0 : vpinHalt.triggerCount;
+        r.totalTrades = ctx.tradeLog.size();
+        r.sellProgramExecutedQty = seller.getExecutedQty();
+
+        // approximate max participation: executed / total market volume around execution window
+        int windowVolume = 0;
+        for (var t : ctx.tradeLog) {
+            if (t.timestamp >= SELL_PROGRAM_START_SEC) windowVolume += t.quantity;
+        }
+        r.sellProgramMaxParticipationPct = windowVolume == 0 ? 0
+                : (seller.getExecutedQty() * 100.0) / windowVolume;
+
+        return r;
+    }
 }
