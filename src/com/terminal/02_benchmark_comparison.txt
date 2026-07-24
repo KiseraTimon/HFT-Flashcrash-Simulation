@@ -1,0 +1,9 @@
+--- Benchmark comparison: simulation vs. published figures ---
+Metric                                              Simulated       Published
+Max intraday drawdown                                   8.20%           5.00%
+HFT inventory mean-reversion half-life                 0.19min           2.0min
+Max aggregate HFT inventory (scaled units)                120             120
+Sell program max participation rate                      9.0%            9.0%
+Sell program size (scaled contracts)                     2770            3000
+(Note: contract counts are scaled by a documented factor of 0.04 relative to the literal SEC-CFTC figures; percentages and time-based
+ quantities are unscaled and directly comparable.)
