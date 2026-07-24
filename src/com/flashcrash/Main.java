@@ -1,5 +1,6 @@
 package com.flashcrash;
 
+import com.flashcrash.analytics.HotPotatoNetworkAnalyzer;
 import com.flashcrash.analytics.VPINCalculator;
 import com.flashcrash.benchmark.PaperBenchmark;
 import com.flashcrash.util.CsvWriter;
@@ -18,13 +19,17 @@ public class Main {
         System.out.println(" + Easley, Lopez de Prado & O'Hara (2012), Review of Financial Studies 25(5)");
         System.out.println("=========================================================================\n");
 
-        /** Flagship single run (no risk controls); with detailed diagnostics */
+        /** 1. Flagship single run (no risk controls); with detailed diagnostics */
         System.out.println(">>> Flagship run (seed=42, no risk controls) <<<\n");
         Scenario.Output flagship = Scenario.run(42, false, false);
         RunResult fr = flagship.result;
         System.out.println(fr);
         exportFlagshipCsvs(flagship);
         printBenchmarkComparison(fr);
+
+        /** 2. Hot-potato network analysis around the crash window */
+        System.out.println("\n>>> Hot-Potato Network Analysis (ALGORITHM 6) <<<\n");
+        analyzeHotPotato(flagship);
     }
 
     // Flagship CSVs Export Helper
@@ -68,5 +73,27 @@ public class Main {
         System.out.println("(Note: contract counts are scaled by a documented factor of " + Scenario.SCALE
                 + " relative to the literal SEC-CFTC figures; percentages and time-based");
         System.out.println(" quantities are unscaled and directly comparable.)");
+    }
+
+    private static void analyzeHotPotato(Scenario.Output out) {
+        var ctx = out.ctx;
+        HotPotatoNetworkAnalyzer analyzer = new HotPotatoNetworkAnalyzer();
+        double windowStart = Scenario.SELL_PROGRAM_START_SEC;
+        double windowEnd = Scenario.SELL_PROGRAM_START_SEC + 600; // first 10 min of the sell program
+
+        var turnover = analyzer.turnoverRatios(ctx.tradeLog, windowStart, windowEnd);
+        System.out.println("Top 8 traders by turnover ratio (grossVolume / (1+|netPositionChange|)) during the stress window:");
+        System.out.printf("%-12s %12s %12s %10s%n", "Trader", "GrossVol", "NetChange", "Turnover");
+        for (int i = 0; i < Math.min(8, turnover.size()); i++) {
+            var t = turnover.get(i);
+            System.out.printf("%-12s %12d %12d %10.2f%n", t.traderId, t.grossVolume, t.netPositionChange, t.turnoverRatio);
+        }
+
+        var sccs = analyzer.stronglyConnectedComponents(ctx.tradeLog, windowStart, windowEnd);
+        int nontrivial = 0;
+        for (var scc : sccs) if (scc.size() > 1) nontrivial++;
+        System.out.printf("%nTarjan SCC: %d non-trivial strongly-connected components found among %d traders " +
+                        "(cycles of contracts changing hands within a closed group -- the hot-potato signature).%n",
+                nontrivial, sccs.size());
     }
 }
