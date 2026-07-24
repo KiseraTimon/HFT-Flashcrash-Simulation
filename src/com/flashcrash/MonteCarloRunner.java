@@ -64,4 +64,12 @@ public class MonteCarloRunner {
         s.meanHalfLifeMin = halfLifeCount == 0 ? Double.NaN : sumHalfLife / halfLifeCount;
         return s;
     }
+
+    public static void printComparison(ConfigSummary a, ConfigSummary b) {
+        List<Double> ddA = new ArrayList<>(), ddB = new ArrayList<>();
+        for (RunResult r : a.runs) ddA.add(r.maxDrawdownPct);
+        for (RunResult r : b.runs) ddB.add(r.maxDrawdownPct);
+        WelchTTest.Result t = WelchTTest.test(ddA, ddB);
+        System.out.printf("  Welch t-test on max drawdown, %s vs %s: %s%n", a.label, b.label, t);
+    }
 }
