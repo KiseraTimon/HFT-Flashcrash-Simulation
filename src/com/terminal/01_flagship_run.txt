@@ -1,0 +1,12 @@
+=========================================================================
+ FLASH CRASH REPLICATION & MITIGATION STUDY
+ Benchmark: Kirilenko, Kyle, Samadi & Tuzun (2017), Journal of Finance 72(3)
+ + SEC-CFTC (2010) Findings Regarding the Market Events of May 6, 2010
+ + Easley, Lopez de Prado & O'Hara (2012), Review of Financial Studies 25(5)
+=========================================================================
+
+>>> Flagship run (seed=42, no risk controls) <<<
+
+seed=42 drawdown=8.20% crash=true bottomT=1569s recovery=150s peakVPIN=0.977 invHalfLife=0.19min maxHftInv=120 luldTrig=0 vpinTrig=0 trades=34203 sellExec=2770 maxPart=9.0%
+
+Process finished with exit code 0

@@ -1,0 +1,14 @@
+>>> Hot-Potato Network Analysis (ALGORITHM 6) <<<
+
+Top 8 traders by turnover ratio (grossVolume / (1+|netPositionChange|)) during the stress window:
+Trader           GrossVol    NetChange   Turnover
+HFT-9                1083            1     541.50
+NOISE-6               274            0     274.00
+HFT-4                 984           -4     196.80
+HFT-8                1062           -6     151.71
+HFT-3                1030           -6     147.14
+HFT-2                1012           -6     144.57
+HFT-7                1047           -9     104.70
+HFT-0                1017           -9     101.70
+
+Tarjan SCC: 1 non-trivial strongly-connected components found among 2 traders (cycles of contracts changing hands within a closed group -- the hot-potato signature).
