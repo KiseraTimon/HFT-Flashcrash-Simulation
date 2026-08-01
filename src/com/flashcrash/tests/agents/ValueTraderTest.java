@@ -69,4 +69,25 @@ public class ValueTraderTest implements TestSuite {
                 "when price is far above fundamental value, the value trader ends up net SHORT (it sold the 'expensive' asset)");
     }
 
+    private void testNoTradeWhenGapIsWithinThreshold(TestReport report) {
+        SimulationContext ctx = new SimulationContext(53);
+        ctx.book.submit("COUNTERPARTY", OrderSide.SELL, OrderType.LIMIT, MarketConstants.priceToTicks(1165.25), 50, 0.0);
+        ctx.book.submit("COUNTERPARTY", OrderSide.BUY, OrderType.LIMIT, MarketConstants.priceToTicks(1164.75), 50, 0.0);
+
+        /**
+         * Fundamental value only trivially different from market price --
+         * well within a 1% threshold -- should not trigger any trade.
+         */
+        ctx.fundamentalValue = 1165.50;
+
+        int tradesBefore = ctx.tradeLog.size();
+        ValueTrader trader = new ValueTrader("VALUE-TEST", 1.0, /*thresholdPct=*/ 1.0, 5.0, 40);
+        trader.act(0.0, ctx);
+        int tradesAfter = ctx.tradeLog.size();
+
+        report.checkEquals((long) tradesAfter, (long) tradesBefore,
+                "when the price/fundamental gap is smaller than the configured threshold, the value trader does not trade at all");
+        report.checkEquals(ctx.position("VALUE-TEST"), 0L,
+                "no trade means the value trader's position stays exactly at zero");
+    }
 }
