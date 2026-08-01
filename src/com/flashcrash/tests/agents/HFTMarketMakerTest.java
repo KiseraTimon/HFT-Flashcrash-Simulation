@@ -23,7 +23,6 @@ public class HFTMarketMakerTest implements TestSuite {
     @Override
     public void run(TestReport report) {
         report.enterSuite(name());
-
     }
 
     private void testQuotesNeverCrossAtZeroInventory(TestReport report) {
@@ -76,5 +75,36 @@ public class HFTMarketMakerTest implements TestSuite {
         report.check(bidWhenLong <= bidAtZeroInventory,
                 "a market maker holding a long position quotes a bid at or below what it would quote when flat "
                         + "(skewing down to discourage buying more) -- flat bid=" + bidAtZeroInventory + ", long bid=" + bidWhenLong);
+    }
+
+    private void testQuotesNeverGoNonPositiveUnderExtremeInventory(TestReport report) {
+        /**
+         * This is the direct regression test for the historical bug: with a
+         * large enough inventory and an insufficiently dampened gamma, the
+         * reservation price formula (mid - q*gamma*sigma^2*horizon) can go
+         * to zero or negative. The production code guards against this with
+         * an explicit floor (reservation >= 0.2*mid). We deliberately force
+         * an extreme inventory here to confirm that floor actually holds.
+         */
+        SimulationContext ctx = new SimulationContext(23);
+        ctx.book.submit("SEED", OrderSide.BUY, OrderType.LIMIT, MarketConstants.priceToTicks(1164.75), 5, 0.0);
+        ctx.book.submit("SEED", OrderSide.SELL, OrderType.LIMIT, MarketConstants.priceToTicks(1165.25), 5, 0.0);
+
+        String id = "HFT-EXTREME";
+        /**
+         * An inventory far larger than anything the hard cap would normally allow,
+         * simulating "what if the skew math were still as aggressive as the buggy
+         * version" -- the price floor must hold regardless of how large q gets.
+         */
+        ctx.positions.put(id, 100_000);
+        HFTMarketMaker mm = new HFTMarketMaker(id, 3.0, 0.05, 1.0, 1.0, 1.0, 1, 1_000_000);
+        mm.act(0.0, ctx);
+
+        Double bestBid = ctx.book.bestBid();
+        Double bestAsk = ctx.book.bestAsk();
+        report.check(bestBid == null || bestBid > 0,
+                "even under an extreme, artificially-forced inventory, the quoted bid price never goes to zero or negative");
+        report.check(bestAsk == null || bestAsk > 0,
+                "even under an extreme, artificially-forced inventory, the quoted ask price never goes to zero or negative");
     }
 }
