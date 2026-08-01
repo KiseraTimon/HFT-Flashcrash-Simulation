@@ -56,4 +56,25 @@ public class LargeSellerTest implements TestSuite {
                 "a real trade for the computed quantity actually appears in the trade log (the order matched, not just internal bookkeeping)");
     }
 
+    private void testCapsAtRemainingQuantity(TestReport report) {
+        SimulationContext ctx = new SimulationContext(32);
+        ctx.book.submit("COUNTERPARTY", OrderSide.BUY, OrderType.LIMIT, MarketConstants.priceToTicks(1160.00), 1000, 0.0);
+
+        /**
+         * Enormous background volume would imply a target far larger than
+         * the seller's total order size -- it must never sell more than it
+         * actually has to sell.
+         */
+        injectBackgroundVolume(ctx, 1_000_000, 0.1);
+
+        LargeSeller seller = new LargeSeller("BIGSELLER", 200 /* small total size */, 0.50,
+                0.0, 10_000, 1.0);
+        seller.act(0.0, ctx);
+
+        report.checkEquals(seller.getExecutedQty(), 200L,
+                "the seller never executes more than its configured total quantity, even if the participation target implies more");
+        report.checkEquals(seller.getRemainingQty(), 0L, "remaining quantity correctly hits exactly zero, not negative");
+    }
+
+
 }
