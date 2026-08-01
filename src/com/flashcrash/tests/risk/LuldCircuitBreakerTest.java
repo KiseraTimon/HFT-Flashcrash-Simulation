@@ -33,6 +33,10 @@ public class LuldCircuitBreakerTest implements TestSuite {
     @Override
     public void run(TestReport report) {
         report.enterSuite(name());
+
+        testNoHaltDuringStablePrices(report);
+        testHaltsOnSuddenLargeMove(report);
+        testStaysHaltedUntilHaltDurationElapses(report);
     }
 
     /** Cancels the previous quote (if any) and rests a fresh bid/ask pair around `price`. */
