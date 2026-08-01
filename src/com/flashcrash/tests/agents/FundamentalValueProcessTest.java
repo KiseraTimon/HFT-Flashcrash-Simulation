@@ -27,6 +27,10 @@ public class FundamentalValueProcessTest implements TestSuite {
     @Override
     public void run(TestReport report) {
         report.enterSuite(name());
+
+        testDeterministicDriftMatchesFormula(report);
+        testConvergesTowardLongRunMeanWithZeroVolatility(report);
+        testNeverGoesNonPositiveUnderHighVolatility(report);
     }
 
     private void testDeterministicDriftMatchesFormula(TestReport report) {
