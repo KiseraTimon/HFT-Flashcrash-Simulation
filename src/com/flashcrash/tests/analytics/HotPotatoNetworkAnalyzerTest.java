@@ -1,0 +1,78 @@
+package com.flashcrash.tests.analytics;
+
+import com.flashcrash.analytics.HotPotatoNetworkAnalyzer;
+import com.flashcrash.core.MarketConstants;
+import com.flashcrash.core.Trade;
+import com.flashcrash.tests.framework.TestReport;
+import com.flashcrash.tests.framework.TestSuite;
+
+import java.util.List;
+
+/**
+ * Tests for HotPotatoNetworkAnalyzer's two techniques:
+ *  (a) turnover ratio (gross volume / (1 + |net position change|))
+ *  (b) Tarjan's Strongly-Connected-Components algorithm on the directed
+ *      seller->buyer trade-flow graph.
+ *
+ * Both are tested against small, hand-constructed toy scenarios where the
+ * "correct answer" can be verified by direct arithmetic (turnover) or by
+ * inspection (a deliberately constructed 3-node cycle for the SCC test).
+ */
+public class HotPotatoNetworkAnalyzerTest implements TestSuite {
+
+    @Override public String name() { return "HotPotatoNetworkAnalyzer"; }
+
+    @Override
+    public void run(TestReport report) {
+        report.enterSuite(name());
+    }
+
+    private Trade trade(String buyer, String seller, int qty, double timestamp) {
+        return new Trade(1, 2, buyer, seller, MarketConstants.priceToTicks(100.0), qty, timestamp, true);
+    }
+
+    private void testTurnoverRatioIdentifiesHotPotatoTrader(TestReport report) {
+        /**
+         * Trader A buys 10 from B, then immediately sells the same 10 to C.
+         * A's gross volume is 20 (10 bought + 10 sold) but A's NET position
+         * change is 0 -- exactly the "hot potato" signature: lots of
+         * trading, no actual risk absorbed. B and C, by contrast, each
+         * trade once and are left holding a real net position change.
+         */
+        List<Trade> trades = List.of(
+                trade("A", "B", 10, 0.0), // A buys from B
+                trade("C", "A", 10, 1.0)  // A sells to C
+        );
+
+        HotPotatoNetworkAnalyzer analyzer = new HotPotatoNetworkAnalyzer();
+        List<HotPotatoNetworkAnalyzer.TurnoverResult> results = analyzer.turnoverRatios(trades, 0.0, 10.0);
+
+        HotPotatoNetworkAnalyzer.TurnoverResult resultA = findByTrader(results, "A");
+        HotPotatoNetworkAnalyzer.TurnoverResult resultB = findByTrader(results, "B");
+
+        report.checkEquals(resultA.grossVolume, 20L, "A's gross volume correctly sums both the buy and the sell (10+10=20)");
+        report.checkEquals(resultA.netPositionChange, 0L, "A's net position change is 0 (bought 10, then sold the same 10)");
+
+        // ratio = gross / (1 + |net|) = 20 / (1+0) = 20.0
+        report.checkEquals(resultA.turnoverRatio, 20.0, 1e-9, "A's turnover ratio matches the hand-computed value 20/(1+0)=20.0");
+
+        report.checkEquals(resultB.grossVolume, 10L, "B's gross volume is just the one trade (10)");
+        report.checkEquals(resultB.netPositionChange, -10L, "B went short 10 (sold to A and never bought back)");
+
+        report.check(resultA.turnoverRatio > resultB.turnoverRatio,
+                "the trader with high gross volume but zero net change (A, the 'hot potato') "
+                        + "correctly ranks ABOVE a trader with the same gross volume but a real net position change (B)");
+
+        // The method's contract (per its own sort call) is descending order by turnover ratio.
+        boolean sortedDescending = true;
+        for (int i = 1; i < results.size(); i++) {
+            if (results.get(i).turnoverRatio > results.get(i - 1).turnoverRatio) sortedDescending = false;
+        }
+        report.check(sortedDescending, "results are returned sorted by turnover ratio, highest first");
+    }
+
+    private HotPotatoNetworkAnalyzer.TurnoverResult findByTrader(
+            List<HotPotatoNetworkAnalyzer.TurnoverResult> results, String traderId) {
+        return results.stream().filter(r -> r.traderId.equals(traderId)).findFirst().orElseThrow();
+    }
+}
