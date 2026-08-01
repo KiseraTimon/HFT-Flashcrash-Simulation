@@ -95,4 +95,13 @@ public class VPINCalculatorTest implements TestSuite {
         report.check(result.isEmpty(), "an empty trade list produces an empty VPIN series (no divide-by-zero, no crash)");
     }
 
+    private void testInsufficientVolumeProducesNoOutput(TestReport report) {
+        // Only 5 contracts traded total, far short of even one full bucket (100).
+        VPINCalculator calc = new VPINCalculator(100, 3);
+        List<Trade> tinyTape = buildTape(new double[]{100.0, 100.5}, 2);
+        List<VPINCalculator.VpinPoint> result = calc.compute(tinyTape);
+        report.check(result.isEmpty(),
+                "when total traded volume never fills even a single bucket, no VPIN reading is produced yet "
+                        + "(there isn't enough data for a meaningful estimate)");
+    }
 }
