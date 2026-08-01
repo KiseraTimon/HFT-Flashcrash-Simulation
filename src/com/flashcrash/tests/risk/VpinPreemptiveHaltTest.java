@@ -89,4 +89,36 @@ public class VpinPreemptiveHaltTest implements TestSuite {
                 "with fewer than 20 trades recorded, the halt never fires, even with a very low (easy to cross) threshold");
     }
 
+    private void testRespectsRecomputeInterval(TestReport report) {
+        SimulationContext ctx = new SimulationContext(74);
+        double[] flatPrices = new double[25];
+        for (int i = 0; i < 25; i++) flatPrices[i] = 100.0 + (i % 2 == 0 ? 0.5 : 0.0); // balanced, low VPIN
+        addTrades(ctx, flatPrices, 5, 0.0);
+
+        VpinPreemptiveHalt halt = new VpinPreemptiveHalt(50, 3, 0.5, 20.0, 1.0 /* recompute at most once per second */);
+        ctx.now = 0.0;
+        halt.evaluate(ctx);
+        double firstVpin = halt.lastVpin;
+
+        /**
+         * Add a large batch of strongly one-sided volume, but call evaluate()
+         * again almost immediately (well inside the 1-second recompute gate)
+         * -- the reading should NOT change yet, because the gate should skip
+         * recomputation.
+         */
+        double[] trendingPrices = new double[30];
+        for (int i = 0; i < 30; i++) trendingPrices[i] = 200.0 + i;
+        addTrades(ctx, trendingPrices, 5, 1.0);
+
+        ctx.now = 0.5; // still within the 1.0s recompute gate
+        halt.evaluate(ctx);
+        report.checkEquals(halt.lastVpin, firstVpin, 1e-9,
+                "calling evaluate() again before the configured recompute interval has elapsed does not change the reading");
+
+        // Now advance past the gate -- a recompute should actually happen.
+        ctx.now = 2.0;
+        halt.evaluate(ctx);
+        report.check(halt.lastVpin != firstVpin,
+                "once the recompute interval has elapsed, evaluate() picks up the new (now much more one-sided) trade data");
+    }
 }
