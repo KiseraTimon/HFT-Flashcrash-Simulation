@@ -73,4 +73,39 @@ public class LogisticRegressionTest implements TestSuite {
                 "AUC (a threshold-independent ranking metric) is near the theoretical maximum of 1.0 "
                         + "on cleanly separable data (actual: " + metrics.auc + ")");
     }
+
+    private void testBestF1ThresholdBeatsDefaultOnImbalancedData(TestReport report) {
+        /**
+         * Build a deliberately imbalanced dataset (positives are rare, as
+         * they are for real crash events) where the model, if any good,
+         * should still be able to rank positives higher -- but a fixed
+         * 0.5 decision threshold can easily predict "never positive" and
+         * still score high accuracy, hiding a model that's actually useless.
+         * The point of bestF1Threshold() is to surface a threshold where the
+         * model's actual discriminative ability shows up in precision/recall.
+         */
+        List<double[]> features = new ArrayList<>();
+        List<Integer> labels = new ArrayList<>();
+        for (int i = 0; i < 200; i++) {
+            double x = i - 100; // ranges from -100 to 99
+            features.add(new double[]{x});
+
+            // Only the top ~5% of the range is labeled positive -- a rare-event setup.
+            labels.add(x > 90 ? 1 : 0);
+        }
+
+        LogisticRegression model = new LogisticRegression(0.01);
+        model.fit(features, labels, 3000, 0.05);
+
+        double bestThreshold = model.bestF1Threshold(features, labels);
+        LogisticRegression.Metrics atBest = model.evaluate(features, labels, bestThreshold);
+        LogisticRegression.Metrics atDefault = model.evaluate(features, labels, 0.5);
+
+        report.check(atBest.f1 >= atDefault.f1,
+                "the F1-optimal threshold achieves an F1 score at least as good as the default 0.5 cutoff "
+                        + "(default F1=" + atDefault.f1 + ", best F1=" + atBest.f1 + ")");
+        report.check(atBest.recall > 0.0,
+                "at the F1-optimal threshold, the model actually identifies SOME of the rare positive class "
+                        + "(recall=" + atBest.recall + "), rather than trivially predicting all-negative");
+    }
 }
