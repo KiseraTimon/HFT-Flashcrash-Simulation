@@ -24,6 +24,11 @@ public class LargeSellerTest implements TestSuite {
     @Override
     public void run(TestReport report) {
         report.enterSuite(name());
+
+        testExecutesTargetParticipationOfBackgroundVolume(report);
+        testCapsAtRemainingQuantity(report);
+        testCapsAtMaxChunkPerPoll(report);
+        testDeactivatesOnceFullyExecuted(report);
     }
 
     /** Adds a synthetic trade directly to the trade log, representing volume traded by other participants. */
