@@ -89,4 +89,10 @@ public class VPINCalculatorTest implements TestSuite {
         }
     }
 
+    private void testEmptyInputProducesNoOutput(TestReport report) {
+        VPINCalculator calc = new VPINCalculator(100, 3);
+        List<VPINCalculator.VpinPoint> result = calc.compute(new ArrayList<>());
+        report.check(result.isEmpty(), "an empty trade list produces an empty VPIN series (no divide-by-zero, no crash)");
+    }
+
 }
