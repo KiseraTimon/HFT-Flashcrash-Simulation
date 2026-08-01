@@ -27,6 +27,10 @@ public class VPINCalculatorTest implements TestSuite {
     @Override
     public void run(TestReport report) {
         report.enterSuite(name());
+
+        testTrendingTapeScoresHigherThanOscillatingTape(report);
+        testEmptyInputProducesNoOutput(report);
+        testInsufficientVolumeProducesNoOutput(report);
     }
 
     /** Builds a synthetic trade tape: `tradesPerBucket` trades of `qtyPerTrade` each, following `prices`. */
