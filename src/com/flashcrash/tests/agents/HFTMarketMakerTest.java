@@ -107,4 +107,34 @@ public class HFTMarketMakerTest implements TestSuite {
         report.check(bestAsk == null || bestAsk > 0,
                 "even under an extreme, artificially-forced inventory, the quoted ask price never goes to zero or negative");
     }
+
+    private void testHardCapStopsFurtherAccumulationAndTriggersFlatten(TestReport report) {
+        /**
+         * Once inventory reaches the hard cap, the agent must (a) stop
+         * quoting on the side that would add to the position, and (b)
+         * actively submit an aggressive order to flatten back toward the
+         * cap. We verify (b) by seeding a counterparty for it to trade
+         * against and confirming a de-risking trade actually occurs.
+         */
+        SimulationContext ctx = new SimulationContext(24);
+        String id = "HFT-CAPPED";
+        int cap = 10;
+        ctx.positions.put(id, cap); // exactly at the cap, long
+
+        // A counterparty resting buy order for the agent's forced flatten-sell to match against.
+        ctx.book.submit("COUNTERPARTY", OrderSide.BUY, OrderType.LIMIT, MarketConstants.priceToTicks(1160.00), 50, 0.0);
+
+        HFTMarketMaker mm = new HFTMarketMaker(id, 3.0, 0.05, 1.0, 1.0, 1.0, 1, cap);
+        int tradesBefore = ctx.tradeLog.size();
+        mm.act(0.0, ctx);
+        int tradesAfter = ctx.tradeLog.size();
+
+        report.check(tradesAfter > tradesBefore,
+                "once inventory is at/over the hard cap, the agent actively trades to flatten "
+                        + "(a de-risking trade occurs) rather than silently sitting at the cap forever");
+
+        boolean sawSellFromAgent = ctx.tradeLog.stream().anyMatch(t -> t.sellTraderId.equals(id));
+        report.check(sawSellFromAgent,
+                "the de-risking trade is on the correct side: a LONG agent at its cap sells to reduce inventory");
+    }
 }
