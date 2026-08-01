@@ -107,7 +107,7 @@ com.flashcrash
 ├── benchmark/
 │   ├── PaperBenchmark (reference constants)
 │   └── WelchTTest
-├── tests/
+├── tests/ (comprehensive test suite)
 ├── Main
 ├── MonteCarloRunner
 ├── RunResult
