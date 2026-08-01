@@ -31,6 +31,10 @@ public class ValueTraderTest implements TestSuite {
     @Override
     public void run(TestReport report) {
         report.enterSuite(name());
+
+        testBuysWhenPriceIsFarBelowFundamental(report);
+        testSellsWhenPriceIsFarAboveFundamental(report);
+        testNoTradeWhenGapIsWithinThreshold(report);
     }
 
     private void testBuysWhenPriceIsFarBelowFundamental(TestReport report) {
