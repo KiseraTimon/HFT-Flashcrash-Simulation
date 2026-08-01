@@ -23,6 +23,11 @@ public class HFTMarketMakerTest implements TestSuite {
     @Override
     public void run(TestReport report) {
         report.enterSuite(name());
+
+        testQuotesNeverCrossAtZeroInventory(report);
+        testInventorySkewsQuotesInCorrectDirection(report);
+        testQuotesNeverGoNonPositiveUnderExtremeInventory(report);
+        testHardCapStopsFurtherAccumulationAndTriggersFlatten(report);
     }
 
     private void testQuotesNeverCrossAtZeroInventory(TestReport report) {
