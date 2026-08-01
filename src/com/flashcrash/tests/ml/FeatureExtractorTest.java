@@ -93,4 +93,22 @@ public class FeatureExtractorTest implements TestSuite {
                     "feature index 0 (VPIN) defaults to 0.0 when the trade log is empty (no VPIN reading available yet)");
         }
     }
+
+    private void testTooShortContextProducesEmptyDataset(TestReport report) {
+        SimulationContext ctx = new SimulationContext(82);
+
+        // Only 3 samples recorded -- far short of the volWindow=5 the extractor needs.
+        for (int i = 0; i < 3; i++) {
+            ctx.sampleTimes.add((double) i);
+            ctx.midPriceSeries.add(100.0);
+            ctx.bestBidSeries.add(0.0);
+            ctx.bestAskSeries.add(0.0);
+            ctx.hftAggregateInventorySeries.add(0);
+            ctx.imbalanceSeries.add(0.0);
+        }
+        FeatureExtractor extractor = new FeatureExtractor(5.0, 5.0, 5);
+        FeatureExtractor.Dataset ds = extractor.build(ctx);
+        report.check(ds.features.isEmpty(),
+                "a context with too few recorded samples produces an empty dataset rather than throwing or misbehaving");
+    }
 }
