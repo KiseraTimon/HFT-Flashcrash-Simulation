@@ -48,14 +48,13 @@ first set of reforms)*
 
 ## 2. Source papers (the benchmark / ground truth)
 
-1. **Kirilenko, A., Kyle, A.S., Samadi, M., & Tuzun, T. (2017).** `The Flash Crash:
-   High-Frequency Trading in an Electronic Market. *The Journal of Finance*, 72(3),
-   967–998`: The primary academic study of the event, based on CME audit-trail data.
+1. **[Kirilenko, A., Kyle, A.S., Samadi, M., & Tuzun, T. (2017)](https://www.repository.cam.ac.uk/bitstreams/c867f7d2-73c9-40d6-a2b3-554bea7af718/download).** `The Flash Crash:
+   High-Frequency Trading in an Electronic Market`: The primary academic study of the event, based on CME audit-trail data.
    Key findings used as benchmarks: HFT inventories rarely exceeded roughly 3,000
    E-mini contracts and mean-reverted to zero with a half-life around two minutes; HFTs
    did not change their trading pattern as prices fell, but their high turnover with
    near-flat net inventory *("hot potato" trading)* amplified the event.
-2. **U.S. CFTC & SEC (2010).** `Findings Regarding the Market Events of May 6, 2010.
+2. **[U.S. CFTC & SEC (2010)](https://www.sec.gov/files/marketevents-report.pdf).** `Findings Regarding the Market Events of May 6, 2010.
    Report of the Staffs of the CFTC and SEC to the Joint Advisory Committee on Emerging
    Regulatory Issues`: The official regulatory post-mortem. Key figures used as
    benchmarks: a 75,000-E-mini-contract (~$4.1B) sell program, executed by a
@@ -63,12 +62,12 @@ first set of reforms)*
    representing 1.3% of the day's total volume but up to 9% of volume during its own
    execution window; E-mini buy-side liquidity fell roughly 55% around the event;
    prices fell more than 5% within minutes before rebounding.
-3. **Easley, D., López de Prado, M.M., & O'Hara, M. (2012).** `Flow Toxicity and
+3. **[Easley, D., López de Prado, M.M., & O'Hara, M. (2012)](https://www.stern.nyu.edu/sites/default/files/assets/documents/con_035928.pdf).** `Flow Toxicity and
    Liquidity in a High-Frequency World. *Review of Financial Studies*, 25(5),
    1457–1493`: Source of the VPIN (Volume-Synchronized Probability of Informed
    Trading) order-flow-toxicity measure, which independent researchers found spiked to
    unusually high levels in the hour before the crash.
-4. **Avellaneda, M., & Stoikov, S. (2008).** `High-Frequency Trading in a Limit Order
+4. **[Avellaneda, M., & Stoikov, S. (2008)](https://people.orie.cornell.edu/sfs33/LimitOrderBook.pdf).** `High-Frequency Trading in a Limit Order
    Book." *Quantitative Finance*, 8(3), 217–224`: Source of the inventory-skewed
    market-making model used for the simulated HFT agents.
 
