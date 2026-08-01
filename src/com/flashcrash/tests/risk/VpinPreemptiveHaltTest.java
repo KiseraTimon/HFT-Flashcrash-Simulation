@@ -53,4 +53,23 @@ public class VpinPreemptiveHaltTest implements TestSuite {
         report.check(halt.lastVpin > 0.5, "the recorded VPIN value is indeed above the configured threshold");
     }
 
+    private void testDoesNotHaltOnBalancedOrderFlow(TestReport report) {
+        SimulationContext ctx = new SimulationContext(72);
+
+        /**
+         * Oscillating prices (as in VPINCalculatorTest) score a low VPIN --
+         * should stay comfortably under a 0.5 threshold.
+         */
+        double[] prices = new double[30];
+        for (int i = 0; i < 30; i++) prices[i] = 100.0 + (i % 2 == 0 ? 1.0 : 0.0);
+        addTrades(ctx, prices, 5, 0.0);
+
+        VpinPreemptiveHalt halt = new VpinPreemptiveHalt(50, 3, 0.5, 20.0, 1.0);
+        ctx.now = 0.0;
+        halt.evaluate(ctx);
+
+        report.check(!ctx.tradingHalted, "balanced (oscillating) order flow does not trigger a halt");
+        report.checkEquals(halt.triggerCount, 0L, "trigger count stays at zero for balanced order flow");
+    }
+
 }
