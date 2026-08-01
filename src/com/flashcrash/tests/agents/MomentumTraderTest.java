@@ -48,6 +48,18 @@ public class MomentumTraderTest implements TestSuite {
         }
     }
 
+    private void testDetectsUptrendAndBuys(TestReport report) {
+        SimulationContext ctx = new SimulationContext(12);
+        MomentumTrader trader = new MomentumTrader("MOM-TEST", 1.0, 3, 6, 0.01, 5);
+
+        // Price rises steadily from 100.00 up by 1.00 each step.
+        driveTrendAndTrade(ctx, trader, 100.00, 1.00, 12);
+
+        report.check(ctx.position("MOM-TEST") > 0,
+                "in a steadily rising market, the momentum trader ends up net LONG "
+                        + "(it bought into the rally) -- actual position: " + ctx.position("MOM-TEST"));
+    }
+
     private void testFlatPriceProducesNoTrades(TestReport report) {
         SimulationContext ctx = new SimulationContext(13);
         MomentumTrader trader = new MomentumTrader("MOM-TEST", 1.0, 3, 6, 0.01, 5);
