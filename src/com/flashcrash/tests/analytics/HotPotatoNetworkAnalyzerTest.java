@@ -75,4 +75,29 @@ public class HotPotatoNetworkAnalyzerTest implements TestSuite {
             List<HotPotatoNetworkAnalyzer.TurnoverResult> results, String traderId) {
         return results.stream().filter(r -> r.traderId.equals(traderId)).findFirst().orElseThrow();
     }
+
+    private void testTarjanFindsAKnownThreeNodeCycle(TestReport report) {
+        /**
+         * Deliberately construct a closed loop of contracts: A -> B -> C -> A
+         * (edges are seller -> buyer, i.e. "who did the contract flow to").
+         * This is exactly the graph-theoretic signature of hot-potato
+         * trading within a closed group, and Tarjan's algorithm must find
+         * all three nodes as one strongly-connected component.
+         */
+        List<Trade> trades = List.of(
+                trade("B", "A", 5, 0.0), // seller A -> buyer B
+                trade("C", "B", 5, 1.0), // seller B -> buyer C
+                trade("A", "C", 5, 2.0)  // seller C -> buyer A  (closes the loop)
+        );
+
+        HotPotatoNetworkAnalyzer analyzer = new HotPotatoNetworkAnalyzer();
+        List<List<String>> sccs = analyzer.stronglyConnectedComponents(trades, 0.0, 10.0);
+
+        List<String> theCycle = sccs.stream().filter(scc -> scc.size() == 3).findFirst().orElse(null);
+        report.check(theCycle != null, "Tarjan's algorithm finds exactly one non-trivial (size>1) strongly-connected component");
+        if (theCycle != null) {
+            report.check(theCycle.contains("A") && theCycle.contains("B") && theCycle.contains("C"),
+                    "the strongly-connected component found is precisely {A, B, C} -- the constructed cycle");
+        }
+    }
 }
