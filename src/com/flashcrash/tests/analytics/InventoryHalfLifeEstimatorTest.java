@@ -24,6 +24,10 @@ public class InventoryHalfLifeEstimatorTest implements TestSuite {
     @Override
     public void run(TestReport report) {
         report.enterSuite(name());
+
+        testRecoversKnownDecayRate(report);
+        testExplosiveSeriesReturnsUndefinedHalfLife(report);
+        testTooShortSeriesReturnsUndefined(report);
     }
 
     private List<Double> generateDeterministicAR1(double x0, double phi, int n) {
