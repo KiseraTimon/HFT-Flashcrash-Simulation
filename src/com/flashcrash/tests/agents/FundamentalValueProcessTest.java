@@ -79,4 +79,25 @@ public class FundamentalValueProcessTest implements TestSuite {
         report.checkEquals(ctx.fundamentalValue, f0, 1.0,
                 "after 200 steps of pure mean-reversion, the value has essentially converged to f0 (within 1.0)");
     }
+
+    private void testNeverGoesNonPositiveUnderHighVolatility(TestReport report) {
+        /**
+         * With sigma>0, individual steps are random, but the production
+         * code clamps every step to a floor of MarketConstants.TICK_SIZE.
+         * We use a deliberately large sigma and many iterations to make it
+         * likely that, absent the floor, at least one step would go
+         * non-positive -- and confirm it never actually does.
+         */
+        SimulationContext ctx = new SimulationContext(43);
+        FundamentalValueProcess process = new FundamentalValueProcess(1.0, 0.01, /*sigma=*/ 0.5, 1000.0);
+
+        double t = 0.0;
+        boolean everNonPositive = false;
+        for (int step = 0; step < 2000; step++) {
+            t = process.act(t, ctx);
+            if (ctx.fundamentalValue <= 0) everNonPositive = true;
+        }
+        report.check(!everNonPositive,
+                "across 2000 steps of a deliberately high-volatility run, the fundamental value never goes to zero or negative");
+    }
 }
