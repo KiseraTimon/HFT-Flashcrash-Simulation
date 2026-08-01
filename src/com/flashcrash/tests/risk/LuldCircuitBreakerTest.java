@@ -81,4 +81,31 @@ public class LuldCircuitBreakerTest implements TestSuite {
         report.checkEquals(breaker.triggerCount, 1L, "trigger count increments exactly once for this one shock");
         report.check(ctx.haltUntil > ctx.now, "the halt is scheduled to last into the future, not end immediately");
     }
+
+    private void testStaysHaltedUntilHaltDurationElapses(TestReport report) {
+        SimulationContext ctx = new SimulationContext(63);
+        lastBidId = -1; lastAskId = -1;
+        LuldCircuitBreaker breaker = new LuldCircuitBreaker(3.0, 30.0, 300.0);
+
+        for (int i = 0; i < 20; i++) {
+            ctx.now = i * 1.0;
+            setPrice(ctx, 1165.00, ctx.now);
+            breaker.evaluate(ctx);
+        }
+        ctx.now = 21.0;
+        setPrice(ctx, 1048.50, ctx.now);
+        breaker.evaluate(ctx);
+        report.check(ctx.tradingHalted, "halted immediately after the shock");
+
+        /**
+         * While still halted, further evaluate() calls must be no-ops (the
+         * production code returns immediately if ctx.tradingHalted is true) --
+         * in particular, the trigger count must NOT increment again just
+         * because price is still far from the reference.
+         */
+        ctx.now = 22.0;
+        breaker.evaluate(ctx);
+        report.checkEquals(breaker.triggerCount, 1L,
+                "while already halted, evaluate() does not fire additional (redundant) halts");
+    }
 }
