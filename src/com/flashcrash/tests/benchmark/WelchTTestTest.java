@@ -58,4 +58,18 @@ public class WelchTTestTest implements TestSuite {
         report.checkEquals(result.t, 0.0, 1e-9,
                 "two identical, zero-variance samples produce a t-statistic of exactly 0.0 (not NaN or infinity)");
     }
+
+    private void testSwappingSampleOrderFlipsTheSignOfT(TestReport report) {
+        List<Double> a = List.of(10.0, 12.0, 14.0);
+        List<Double> b = List.of(1.0, 2.0, 3.0);
+
+        WelchTTest.Result forward = WelchTTest.test(a, b);
+        WelchTTest.Result reversed = WelchTTest.test(b, a);
+
+        report.checkEquals(reversed.t, -forward.t, 1e-9,
+                "swapping the order of the two samples flips the sign of t (since it's just meanA-meanB over a "
+                        + "positive standard error), but leaves its magnitude unchanged");
+        report.checkEquals(reversed.degreesOfFreedom, forward.degreesOfFreedom, 1e-9,
+                "degrees of freedom is symmetric in the two samples and does not depend on their order");
+    }
 }
