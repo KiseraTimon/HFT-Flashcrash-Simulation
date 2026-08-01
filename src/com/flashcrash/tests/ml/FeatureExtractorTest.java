@@ -65,4 +65,32 @@ public class FeatureExtractorTest implements TestSuite {
                 "every sample is labeled exactly as expected: 1 for the 5 samples immediately preceding the "
                         + "engineered crash (indices 15-19), 0 everywhere else");
     }
+
+    private void testFeatureVectorFieldsAlignWithRecordedSeries(TestReport report) {
+        SimulationContext ctx = buildEngineeredCrashContext();
+        FeatureExtractor extractor = new FeatureExtractor(5.0, 5.0, 5);
+        FeatureExtractor.Dataset ds = extractor.build(ctx);
+
+        /**
+         * Per the class's documented feature order: [VPIN, imbalance, volatility, hftInventory, priceChangeRate].
+         * Find the dataset row corresponding to original index i=25 and check
+         * the imbalance/hftInventory fields were copied from the right place,
+         * not off-by-one or transposed with another field.
+         */
+        int targetIndex = 25;
+        int pos = -1;
+        for (int p = 0; p < ds.times.size(); p++) {
+            if (Math.round(ds.times.get(p)) == targetIndex) { pos = p; break; }
+        }
+        report.check(pos >= 0, "the dataset includes a row for original sample index 25");
+        if (pos >= 0) {
+            double[] feat = ds.features.get(pos);
+            report.checkEquals(feat[1], 25 * 0.01, 1e-9,
+                    "feature index 1 (order-book imbalance) matches ctx.imbalanceSeries at the corresponding original index");
+            report.checkEquals(feat[3], 25 * 2.0, 1e-9,
+                    "feature index 3 (aggregate HFT inventory) matches ctx.hftAggregateInventorySeries at the corresponding original index");
+            report.checkEquals(feat[0], 0.0, 1e-9,
+                    "feature index 0 (VPIN) defaults to 0.0 when the trade log is empty (no VPIN reading available yet)");
+        }
+    }
 }
