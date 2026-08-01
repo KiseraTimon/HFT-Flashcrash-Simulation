@@ -22,6 +22,11 @@ public class VpinPreemptiveHaltTest implements TestSuite {
     @Override
     public void run(TestReport report) {
         report.enterSuite(name());
+
+        testHaltsOnOneSidedOrderFlow(report);
+        testDoesNotHaltOnBalancedOrderFlow(report);
+        testDoesNothingWithTooFewTrades(report);
+        testRespectsRecomputeInterval(report);
     }
 
     /** Adds `count` synthetic trades to the trade log, prices following the given sequence. */
