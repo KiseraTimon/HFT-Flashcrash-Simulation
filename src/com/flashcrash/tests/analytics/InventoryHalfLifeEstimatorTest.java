@@ -57,4 +57,20 @@ public class InventoryHalfLifeEstimatorTest implements TestSuite {
         report.checkEquals(result.halfLifeSeconds, expectedHalfLifeSamples * samplingIntervalSeconds, 1e-3,
                 "half-life in seconds correctly multiplies the sample-count half-life by the sampling interval");
     }
+
+    private void testExplosiveSeriesReturnsUndefinedHalfLife(TestReport report) {
+        /**
+         * phi > 1 means the series is growing, not mean-reverting at all --
+         * "half-life" is not a meaningful concept here, and the estimator
+         * should say so explicitly (NaN) rather than returning a nonsense number.
+         */
+        List<Double> series = generateDeterministicAR1(1.0, 1.5, 20);
+
+        InventoryHalfLifeEstimator estimator = new InventoryHalfLifeEstimator();
+        InventoryHalfLifeEstimator.Result result = estimator.estimate(series, 1.0);
+
+        report.checkEquals(result.phi, 1.5, 1e-6, "OLS still correctly recovers phi=1.5 for an explosive series");
+        report.check(Double.isNaN(result.halfLifeSamples),
+                "half-life is reported as NaN (undefined) for a non-mean-reverting, explosive series (phi>=1)");
+    }
 }
