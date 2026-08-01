@@ -25,6 +25,10 @@ public class HotPotatoNetworkAnalyzerTest implements TestSuite {
     @Override
     public void run(TestReport report) {
         report.enterSuite(name());
+
+        testTurnoverRatioIdentifiesHotPotatoTrader(report);
+        testTarjanFindsAKnownThreeNodeCycle(report);
+        testTarjanDoesNotMergeUnconnectedTraders(report);
     }
 
     private Trade trade(String buyer, String seller, int qty, double timestamp) {
