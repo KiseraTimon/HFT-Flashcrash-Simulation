@@ -13,9 +13,12 @@ reactive vs. proactive circuit-breaker designs, built in Java from first princip
 4. [The ten algorithmic/mathematical techniques](#4-the-ten-algorithmicmathematical-techniques)
 5. [Calibration methodology and honest limitations](#5-calibration-methodology-and-honest-limitations)
 6. [How to build and run](#6-how-to-build-and-run)
-7. [Results summary](#7-results-summary-seed42-flagship-run--n40-monte-carlo-per-configuration)
-8. [What this project does *NOT* claim](#8-what-this-project-does-not-claim)
-9. [Visualization](#9-visualization)
+7. [Testing](#7-testing)
+8. [Results summary](#8-results-summary-seed42-flagship-run--n40-monte-carlo-per-configuration)
+9. [What this project does *NOT* claim](#9-what-this-project-does-not-claim)
+10. [Visualization](#10-visualization)
+11. [Future enhancements](#11-future-enhancements)
+12. [Development workflow](#12-development-workflow)
 
 ---
 
@@ -79,6 +82,7 @@ first set of reforms)*
 com.flashcrash
 ├── core/
 │   ├── Order
+│   ├── OrderSide, OrderType (enums)
 │   ├── Trade
 │   ├── OrderBook (matching engine)
 │   └── MarketConstants
@@ -86,6 +90,7 @@ com.flashcrash
 │   ├── SimulationContext
 │   └── SimulationEngine (discrete-event scheduler)
 ├── agents/
+│   ├── Agent (interface every trading robot implements)
 │   ├── NoiseTrader
 │   ├── MomentumTrader
 │   ├── HFTMarketMaker
@@ -98,15 +103,18 @@ com.flashcrash
 │   ├── HotPotatoNetworkAnalyzer
 │   └── NormalDistribution
 ├── risk/
+│   ├── RiskControl (interface every safety mechanism implements)
 │   ├── LuldCircuitBreaker
-│   └──VpinPreemptiveHalt (RiskControl interface)
+│   └── VpinPreemptiveHalt
 ├── ml/
 │   ├── FeatureExtractor
 │   └── LogisticRegression
 ├── benchmark/
 │   ├── PaperBenchmark (reference constants)
 │   └── WelchTTest
-├── tests/ (comprehensive test suite)
+├── util/
+│   └── CsvWriter
+├── tests/ (26 files, 225 checks, 23 suites)
 ├── Main
 ├── MonteCarloRunner
 ├── RunResult
@@ -175,7 +183,13 @@ Two results should be read with this limitation in mind:
 
 ```bash
 find src -name "*.java" > sources.txt
+```
+
+```bash
 javac -d out @sources.txt
+```
+
+```bash
 java -cp out com.flashcrash.Main
 ```
 
@@ -185,11 +199,48 @@ Runs in well under 20 seconds. Produces:
 - `data/flagship_timeseries.csv`, `data/flagship_vpin.csv` — raw time series for
   external plotting.
 - `data/flagship_summary.png` — price / HFT inventory / VPIN chart (regenerate with
-  `python3 main.py`, requires matplotlib).
+  `python3 main.py (or run using: python main.py; uv run main.py)`, requires matplotlib).
 
 ---
 
-## 7. Results summary (seed=42 flagship run + N=40 Monte Carlo per configuration)
+## 7. Testing
+
+```bash
+java -cp out com.flashcrash.tests.RunAllTests
+```
+
+(after the `javac` step above — tests compile as part of the same source tree,
+no separate build step.)
+
+**225 checks across 23 suites**, covering every testable class in the project —
+`core`, `sim`, `agents`, `analytics`, `risk`, `ml`, `benchmark`, and `util`;
+plus one end-to-end integration smoke test (`ScenarioSmokeTest`) that runs the
+real seed=42 flagship simulation and checks the output lands in the plausible
+range documented. No external dependencies: a ~110-line hand-rolled
+assertion framework (`tests.framework`) is used instead of JUnit, to keep the
+*pure Java standard library only* design goal intact for the test code too.
+
+Two suites are direct **regression tests for real bugs found during this
+project's own development**, not hypothetical edge cases:
+
+- `NoiseTraderTest` — guards against a bug where noise traders never
+  cancelled their own resting orders, so book depth grew without limit over
+  a long run, making the simulated market effectively infinitely liquid and
+  hiding the large seller's price impact entirely.
+- `HFTMarketMakerTest` — guards against a runaway price spiral (the
+  `Avellaneda–Stoikov` reservation price collapsing through zero) caused by an
+  earlier, insufficiently dampened inventory-skew calibration.
+
+Every check has an inline comment explaining the expected value's derivation
+(a hand-computed formula, an engineered synthetic dataset with a provably
+-known answer, a toy graph with a known cycle for the Tarjan's-algorithm
+test, etc.) rather than asserting a bare number with no explanation.
+
+The suite exits with status code `0` if everything passes, `1` otherwise.
+
+---
+
+## 8. Results summary (seed=42 flagship run + N=40 Monte Carlo per configuration)
 
 **Replication vs. published figures:**
 
@@ -238,7 +289,7 @@ spiked before the 2010 crash's price impact became visible.
 
 ---
 
-## 8. What this project does *NOT* claim
+## 9. What this project does *NOT* claim
 
 This is a stylized, small-scale agent-based replication, not a validated forecasting
 tool or a proof that VPIN-based halts would have prevented the real 2010 event. Real
@@ -252,7 +303,7 @@ feedback — and using it as a controlled testbed for comparing intervention des
 
 ---
 
-## 9. Visualization
+## 10. Visualization
 
 ![Flagship run: price, HFT inventory, and VPIN](data/flagship_summary.png)
 
@@ -273,4 +324,76 @@ simulated session, generated by `python3 main.py`.
   dotted line). This context matters when reading the Monte Carlo results in §7:
   the VPIN halt is operating in an already-toxic regime for most of each run, not
   triggering on a rare spike.
+
+---
+
+## 11. Future enhancements
+
+I have ordered roughly by expected impact-to-effort ratio, not by importance:
+
+**Calibration & fidelity**
+- Decouple HFT quote-refresh frequency from inventory-unwind speed. `Section 5` already
+  documents that these two are currently coupled through the same
+  Avellaneda–Stoikov parameters, which is the direct cause of the half-life
+  discrepancy (0.19 min simulated vs. ~2 min published). The likely fix is a
+  materially larger, more heterogeneous market-maker population — several
+  sub-cohorts with different risk aversion and refresh rates instead of one
+  homogeneous group — rather than a further single-parameter tweak.
+- Automated, principled calibration (grid search or Bayesian optimization
+  over the agent-population parameters against the `Section 8` benchmark table) in
+  place of the manual, iterative tuning this project actually used. This
+  would also make the calibration process itself reproducible and auditable
+  rather than a one-time hand-tuned artefact.
+- Multi-instrument / cross-venue modelling — the SEC-CFTC report identifies
+  simultaneous stress across equities, index futures, and ETFs as a major
+  amplifying channel (see `Section 9`); this project deliberately models a single
+  instrument only.
+
+**Additional risk controls to evaluate**
+- An IEX-style speed bump (a fixed latency applied to incoming aggressive
+  orders, giving resting market makers a brief window to reprice first) as a
+  third intervention alongside the two already implemented — a natural
+  three-way comparison against the existing reactive/proactive pair.
+- A hybrid design: use VPIN as a *severity* signal to modulate the LULD
+  bandwidth dynamically, rather than treating the two mechanisms as
+  independent all-or-nothing switches (as the current "both combined"
+  configuration does).
+
+**Statistical rigour**
+- Bootstrap confidence intervals on the Monte Carlo outcome distributions,
+  alongside the existing Welch's t-test, particularly for the crash-frequency
+  metric (currently a raw percentage with no reported uncertainty band).
+- A second, independent classifier architecture (e.g. a small decision tree
+  or gradient-boosted ensemble, still implemented from scratch to preserve
+  the no-dependency constraint) to check whether the logistic regression
+  classifier's ~0.83 AUC is close to the ceiling for this feature set, or
+  whether a more expressive model finds meaningfully more signal.
+- Extend the hot-potato network analysis with a centrality measure (e.g.
+  PageRank or betweenness) on the trade-flow graph, complementing the
+  turnover-ratio and Tarjan's-SCC techniques already implemented, to rank
+  *which* traders are structurally central to the hot-potato cycle rather
+  than only detecting that a cycle exists.
+
+**Engineering & tooling**
+- Wire `com.flashcrash.tests.RunAllTests` into an actual CI pipeline (see
+  `Section 12`) — the test suite already exits with the right status codes for this,
+  it just isn't automated on push yet.
+- `ScenarioSmokeTest` already implements the single highest-leverage
+  regression check recommended in this project's own git strategy (see
+  `Section 12`): assert the flagship run's drawdown stays in a plausible band. A
+  natural extension is broadening those assertions to cover more of the §8
+  results table (e.g. the Monte Carlo crash-frequency figures), so a
+  calibration regression anywhere in that table fails a test immediately
+  instead of requiring a human to compare console output against the README
+  by eye.
+
+---
+
+## 12. Development workflow
+
+This repository's branching, commit, and PR conventions — including a full
+branch-by-branch build order and a narrated account of the real bugs found
+during development (the ones referenced in `Section 7`'s regression tests) — are
+documented separately in an internal `strategy.md` that I will not be including
+in this project repo.
 
