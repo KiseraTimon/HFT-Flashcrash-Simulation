@@ -51,4 +51,26 @@ public class LogisticRegressionTest implements TestSuite {
         report.check(metrics.accuracy > 0.9,
                 "training accuracy on an obviously separable dataset is high (actual: " + metrics.accuracy + ")");
     }
+
+    private void testAucIsNearPerfectOnSeparableData(TestReport report) {
+        List<double[]> features = new ArrayList<>();
+        List<Integer> labels = new ArrayList<>();
+        for (int i = -20; i <= 20; i++) {
+            if (i == 0) continue;
+            features.add(new double[]{i, i * 0.5}); // two correlated features
+            labels.add(i > 0 ? 1 : 0);
+        }
+
+        LogisticRegression model = new LogisticRegression(0.001);
+        model.fit(features, labels, 2000, 0.3);
+        LogisticRegression.Metrics metrics = model.evaluate(features, labels, 0.5);
+
+        /**
+         * AUC of 1.0 means the model ranks every positive example above
+         * every negative example -- the theoretical best possible score.
+         */
+        report.check(metrics.auc > 0.95,
+                "AUC (a threshold-independent ranking metric) is near the theoretical maximum of 1.0 "
+                        + "on cleanly separable data (actual: " + metrics.auc + ")");
+    }
 }
