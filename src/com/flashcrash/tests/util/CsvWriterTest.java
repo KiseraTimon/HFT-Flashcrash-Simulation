@@ -49,4 +49,22 @@ public class CsvWriterTest implements TestSuite {
             if (tempFile != null) tempFile.delete();
         }
     }
+
+    private void testEmptyRowsProducesHeaderOnlyFile(TestReport report) {
+        File tempFile = null;
+        try {
+            tempFile = File.createTempFile("csvwriter_test_empty", ".csv");
+            tempFile.deleteOnExit();
+
+            CsvWriter.writeSeries(tempFile.getAbsolutePath(), new String[]{"a", "b"}, new ArrayList<>());
+
+            List<String> lines = Files.readAllLines(tempFile.toPath());
+            report.checkEquals(lines.size(), 1L, "writing zero rows still produces a file with just the header line (no crash, no extra blank lines)");
+            report.checkEquals(lines.get(0), "a,b", "header line is still written correctly even with no data");
+        } catch (IOException e) {
+            report.check(false, "CsvWriter.writeSeries() did not throw an IOException when writing zero rows: " + e);
+        } finally {
+            if (tempFile != null) tempFile.delete();
+        }
+    }
 }
