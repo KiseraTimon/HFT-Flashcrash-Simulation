@@ -53,4 +53,30 @@ public class FundamentalValueProcessTest implements TestSuite {
                     "step " + (step + 1) + ": deterministic (sigma=0) Euler-Maruyama drift matches the hand-derived formula");
         }
     }
+
+    private void testConvergesTowardLongRunMeanWithZeroVolatility(TestReport report) {
+        /**
+         * With sigma=0, repeated application of the mean-reverting drift
+         * must monotonically pull the value toward f0 and stay there --
+         * this is the basic sanity check that theta is acting as a genuine
+         * pull-back-to-the-mean term, not e.g. having its sign flipped.
+         */
+        double f0 = 1200.0;
+        SimulationContext ctx = new SimulationContext(42);
+        FundamentalValueProcess process = new FundamentalValueProcess(0.5, 0.05, 0.0, f0);
+
+        double t = 0.0;
+        double previousDistance = Math.abs(ctx.fundamentalValue - f0);
+        boolean everIncreased = false;
+        for (int step = 0; step < 200; step++) {
+            t = process.act(t, ctx);
+            double distance = Math.abs(ctx.fundamentalValue - f0);
+            if (distance > previousDistance + 1e-9) everIncreased = true;
+            previousDistance = distance;
+        }
+        report.check(!everIncreased,
+                "with zero volatility, the distance to the long-run mean f0 never increases step-over-step (monotonic convergence)");
+        report.checkEquals(ctx.fundamentalValue, f0, 1.0,
+                "after 200 steps of pure mean-reversion, the value has essentially converged to f0 (within 1.0)");
+    }
 }
