@@ -47,4 +47,19 @@ public class MomentumTraderTest implements TestSuite {
             t = trader.act(t, ctx);
         }
     }
+
+    private void testFlatPriceProducesNoTrades(TestReport report) {
+        SimulationContext ctx = new SimulationContext(13);
+        MomentumTrader trader = new MomentumTrader("MOM-TEST", 1.0, 3, 6, 0.01, 5);
+
+        /**
+         * Price never moves -- fast and slow moving averages should stay
+         * equal (or very nearly so), so the trader should never cross its
+         * (very sensitive, 0.01%) trigger threshold in either direction.
+         */
+        driveTrendAndTrade(ctx, trader, 100.00, 0.00, 12);
+
+        report.checkEquals(ctx.position("MOM-TEST"), 0L,
+                "with a perfectly flat price history, the momentum trader never trades (no false-positive signal)");
+    }
 }
