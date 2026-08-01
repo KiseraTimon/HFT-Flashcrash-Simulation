@@ -51,4 +51,22 @@ public class ValueTraderTest implements TestSuite {
                 "when price is far below fundamental value, the value trader ends up net LONG (it bought the 'cheap' asset)");
     }
 
+    private void testSellsWhenPriceIsFarAboveFundamental(TestReport report) {
+        SimulationContext ctx = new SimulationContext(52);
+
+        /**
+         * Market is trading around 1300, but "true value" is only 1000 -- price
+         * looks expensive, so the value trader should sell.
+         */
+        ctx.book.submit("COUNTERPARTY", OrderSide.SELL, OrderType.LIMIT, MarketConstants.priceToTicks(1300.25), 50, 0.0);
+        ctx.book.submit("COUNTERPARTY", OrderSide.BUY, OrderType.LIMIT, MarketConstants.priceToTicks(1299.75), 50, 0.0);
+        ctx.fundamentalValue = 1000.0;
+
+        ValueTrader trader = new ValueTrader("VALUE-TEST", 1.0, 1.0, 5.0, 40);
+        trader.act(0.0, ctx);
+
+        report.check(ctx.position("VALUE-TEST") < 0,
+                "when price is far above fundamental value, the value trader ends up net SHORT (it sold the 'expensive' asset)");
+    }
+
 }
