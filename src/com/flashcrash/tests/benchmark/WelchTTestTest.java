@@ -22,6 +22,10 @@ public class WelchTTestTest implements TestSuite {
     @Override
     public void run(TestReport report) {
         report.enterSuite(name());
+
+        testMatchesHandComputedStatistic(report);
+        testIdenticalSamplesGiveZeroTStatistic(report);
+        testSwappingSampleOrderFlipsTheSignOfT(report);
     }
 
     private void testMatchesHandComputedStatistic(TestReport report) {
