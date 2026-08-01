@@ -58,4 +58,27 @@ public class LuldCircuitBreakerTest implements TestSuite {
         report.check(!ctx.tradingHalted, "a perfectly stable price never triggers the circuit breaker");
         report.checkEquals(breaker.triggerCount, 0L, "trigger count stays at zero throughout a stable period");
     }
+
+    private void testHaltsOnSuddenLargeMove(TestReport report) {
+        SimulationContext ctx = new SimulationContext(62);
+        lastBidId = -1; lastAskId = -1;
+        LuldCircuitBreaker breaker = new LuldCircuitBreaker(3.0, 30.0, 300.0);
+
+        // Build up a stable reference average first.
+        for (int i = 0; i < 20; i++) {
+            ctx.now = i * 1.0;
+            setPrice(ctx, 1165.00, ctx.now);
+            breaker.evaluate(ctx);
+        }
+        report.check(!ctx.tradingHalted, "still not halted right before the shock");
+
+        // A sudden 10% drop -- far outside the 3% band.
+        ctx.now = 21.0;
+        setPrice(ctx, 1048.50, ctx.now); // 1165 * 0.90
+        breaker.evaluate(ctx);
+
+        report.check(ctx.tradingHalted, "a sudden move well outside the configured band triggers a halt");
+        report.checkEquals(breaker.triggerCount, 1L, "trigger count increments exactly once for this one shock");
+        report.check(ctx.haltUntil > ctx.now, "the halt is scheduled to last into the future, not end immediately");
+    }
 }
