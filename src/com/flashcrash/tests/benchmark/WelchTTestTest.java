@@ -44,4 +44,18 @@ public class WelchTTestTest implements TestSuite {
         report.checkEquals(result.degreesOfFreedom, 2.941176, 1e-3,
                 "Welch-Satterthwaite degrees of freedom matches the hand-derived value");
     }
+
+    private void testIdenticalSamplesGiveZeroTStatistic(TestReport report) {
+        /**
+         * Two samples with zero variance and the same mean -- a naive
+         * implementation might divide 0/0 here. The production code
+         * explicitly guards against a near-zero standard error.
+         */
+        List<Double> a = List.of(5.0, 5.0, 5.0);
+        List<Double> b = List.of(5.0, 5.0, 5.0);
+
+        WelchTTest.Result result = WelchTTest.test(a, b);
+        report.checkEquals(result.t, 0.0, 1e-9,
+                "two identical, zero-variance samples produce a t-statistic of exactly 0.0 (not NaN or infinity)");
+    }
 }
