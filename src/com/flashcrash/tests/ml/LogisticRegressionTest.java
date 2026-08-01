@@ -23,6 +23,10 @@ public class LogisticRegressionTest implements TestSuite {
     @Override
     public void run(TestReport report) {
         report.enterSuite(name());
+
+        testLearnsAnObviouslySeparableDataset(report);
+        testAucIsNearPerfectOnSeparableData(report);
+        testBestF1ThresholdBeatsDefaultOnImbalancedData(report);
     }
 
     /**
