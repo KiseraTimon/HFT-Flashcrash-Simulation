@@ -73,4 +73,17 @@ public class InventoryHalfLifeEstimatorTest implements TestSuite {
         report.check(Double.isNaN(result.halfLifeSamples),
                 "half-life is reported as NaN (undefined) for a non-mean-reverting, explosive series (phi>=1)");
     }
+
+    private void testTooShortSeriesReturnsUndefined(TestReport report) {
+        /**
+         * The regression needs at least a couple of (x_{t-1}, x_t) pairs to
+         * fit anything meaningful; the production code explicitly guards
+         * against series shorter than 3 points.
+         */
+        InventoryHalfLifeEstimator estimator = new InventoryHalfLifeEstimator();
+        InventoryHalfLifeEstimator.Result result = estimator.estimate(List.of(1.0, 2.0), 1.0);
+
+        report.check(Double.isNaN(result.phi), "a series with fewer than 3 points returns NaN rather than a spurious fit");
+        report.check(Double.isNaN(result.halfLifeSeconds), "half-life in seconds is also NaN for a too-short series");
+    }
 }
