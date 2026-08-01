@@ -100,4 +100,22 @@ public class HotPotatoNetworkAnalyzerTest implements TestSuite {
                     "the strongly-connected component found is precisely {A, B, C} -- the constructed cycle");
         }
     }
+
+    private void testTarjanDoesNotMergeUnconnectedTraders(TestReport report) {
+        /**
+         * D sells to E once; there's no path back from E to D, so {D, E}
+         * must NOT be reported as a strongly-connected component -- each
+         * should be its own trivial (size-1) component. This guards against
+         * an overly permissive implementation that treats any edge as a cycle.
+         */
+        List<Trade> trades = List.of(trade("E", "D", 5, 0.0));
+
+        HotPotatoNetworkAnalyzer analyzer = new HotPotatoNetworkAnalyzer();
+        List<List<String>> sccs = analyzer.stronglyConnectedComponents(trades, 0.0, 10.0);
+
+        boolean anyNonTrivialComponent = sccs.stream().anyMatch(scc -> scc.size() > 1);
+        report.check(!anyNonTrivialComponent,
+                "a single one-directional trade between two traders produces no non-trivial strongly-connected "
+                        + "component (there's no cycle -- D sold to E, but nothing flows back from E to D)");
+    }
 }
