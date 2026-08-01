@@ -72,4 +72,21 @@ public class VpinPreemptiveHaltTest implements TestSuite {
         report.checkEquals(halt.triggerCount, 0L, "trigger count stays at zero for balanced order flow");
     }
 
+    private void testDoesNothingWithTooFewTrades(TestReport report) {
+        SimulationContext ctx = new SimulationContext(73);
+
+        /**
+         * Only 5 trades -- below the production code's explicit guard of
+         * needing at least 20 trades before attempting a VPIN computation.
+         */
+        addTrades(ctx, new double[]{100, 101, 102, 103, 104}, 5, 0.0);
+
+        VpinPreemptiveHalt halt = new VpinPreemptiveHalt(50, 3, 0.1 /* deliberately low threshold */, 20.0, 1.0);
+        ctx.now = 0.0;
+        halt.evaluate(ctx);
+
+        report.check(!ctx.tradingHalted,
+                "with fewer than 20 trades recorded, the halt never fires, even with a very low (easy to cross) threshold");
+    }
+
 }
