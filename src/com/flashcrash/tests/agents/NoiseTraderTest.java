@@ -24,6 +24,9 @@ public class NoiseTraderTest implements TestSuite {
     @Override
     public void run(TestReport report) {
         report.enterSuite(name());
+
+        testRestingOrdersStayBounded(report);
+        testSubmittedOrdersAreNearMidPrice(report);
     }
 
     private void testRestingOrdersStayBounded(TestReport report) {
