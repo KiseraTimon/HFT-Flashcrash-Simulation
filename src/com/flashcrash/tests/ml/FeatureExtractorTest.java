@@ -23,6 +23,10 @@ public class FeatureExtractorTest implements TestSuite {
     @Override
     public void run(TestReport report) {
         report.enterSuite(name());
+
+        testLabelsSamplesPrecedingAnEngineeredCrash(report);
+        testFeatureVectorFieldsAlignWithRecordedSeries(report);
+        testTooShortContextProducesEmptyDataset(report);
     }
 
     /**
