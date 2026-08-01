@@ -45,4 +45,24 @@ public class FeatureExtractorTest implements TestSuite {
         }
         return ctx;
     }
+
+    private void testLabelsSamplesPrecedingAnEngineeredCrash(TestReport report) {
+        SimulationContext ctx = buildEngineeredCrashContext();
+        FeatureExtractor extractor = new FeatureExtractor(/*crashThresholdPct=*/ 5.0, /*horizonSeconds=*/ 5.0, /*volWindow=*/ 5);
+        FeatureExtractor.Dataset ds = extractor.build(ctx);
+
+        report.check(!ds.features.isEmpty(), "the extractor produces a non-empty dataset from a well-formed context");
+
+        int mismatches = 0;
+        for (int pos = 0; pos < ds.times.size(); pos++) {
+            double sampleTime = ds.times.get(pos);
+            int i = (int) Math.round(sampleTime); // sampleTime == original index, since sampling interval is 1.0
+            boolean expectedCrashAhead = (i >= 15 && i <= 19);
+            boolean actualLabel = ds.labels.get(pos) == 1;
+            if (expectedCrashAhead != actualLabel) mismatches++;
+        }
+        report.checkEquals(mismatches, 0L,
+                "every sample is labeled exactly as expected: 1 for the 5 samples immediately preceding the "
+                        + "engineered crash (indices 15-19), 0 everywhere else");
+    }
 }
