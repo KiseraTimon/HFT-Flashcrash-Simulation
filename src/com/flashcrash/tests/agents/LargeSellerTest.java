@@ -92,4 +92,17 @@ public class LargeSellerTest implements TestSuite {
                         + "algo's per-tick order-size limit)");
     }
 
+    private void testDeactivatesOnceFullyExecuted(TestReport report) {
+        SimulationContext ctx = new SimulationContext(34);
+        ctx.book.submit("COUNTERPARTY", OrderSide.BUY, OrderType.LIMIT, MarketConstants.priceToTicks(1160.00), 1000, 0.0);
+        injectBackgroundVolume(ctx, 10_000, 0.1);
+
+        LargeSeller seller = new LargeSeller("BIGSELLER", 100 /* small enough to finish in one poll */,
+                0.50, 0.0, 10_000, 1.0);
+        double next = seller.act(0.0, ctx);
+
+        report.checkEquals(seller.getRemainingQty(), 0L, "the seller's small total order is fully executed in one poll");
+        report.check(Double.isInfinite(next),
+                "once fully executed, act() returns Double.POSITIVE_INFINITY so the scheduler never calls it again");
+    }
 }
