@@ -76,5 +76,20 @@ public class LargeSellerTest implements TestSuite {
         report.checkEquals(seller.getRemainingQty(), 0L, "remaining quantity correctly hits exactly zero, not negative");
     }
 
+    private void testCapsAtMaxChunkPerPoll(TestReport report) {
+        SimulationContext ctx = new SimulationContext(33);
+        ctx.book.submit("COUNTERPARTY", OrderSide.BUY, OrderType.LIMIT, MarketConstants.priceToTicks(1160.00), 1000, 0.0);
+
+        injectBackgroundVolume(ctx, 10_000, 0.1); // would imply a target of 5,000 at 50% participation
+
+        int maxChunk = 300;
+        LargeSeller seller = new LargeSeller("BIGSELLER", 1000, 0.50, 0.0, maxChunk, 1.0);
+        seller.act(0.0, ctx);
+
+        report.checkEquals(seller.getExecutedQty(), (long) maxChunk,
+                "a single poll never sells more than maxChunk contracts in one go, "
+                        + "even when the participation-rate target would call for more (models a real "
+                        + "algo's per-tick order-size limit)");
+    }
 
 }
