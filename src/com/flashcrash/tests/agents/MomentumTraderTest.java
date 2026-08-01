@@ -26,6 +26,10 @@ public class MomentumTraderTest implements TestSuite {
     @Override
     public void run(TestReport report) {
         report.enterSuite(name());
+
+        testDetectsDowntrendAndSells(report);
+        testDetectsUptrendAndBuys(report);
+        testFlatPriceProducesNoTrades(report);
     }
 
     /**
