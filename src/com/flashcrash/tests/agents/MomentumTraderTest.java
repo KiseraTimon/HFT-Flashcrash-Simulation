@@ -48,6 +48,22 @@ public class MomentumTraderTest implements TestSuite {
         }
     }
 
+    private void testDetectsDowntrendAndSells(TestReport report) {
+        SimulationContext ctx = new SimulationContext(11);
+        /**
+         * Very sensitive threshold (0.01%) and short windows so a clean
+         * engineered trend triggers reliably within a small number of steps.
+         */
+        MomentumTrader trader = new MomentumTrader("MOM-TEST", 1.0, 3, 6, 0.01, 5);
+
+        // Price falls steadily from 100.00 down by 1.00 each step.
+        driveTrendAndTrade(ctx, trader, 100.00, -1.00, 12);
+
+        report.check(ctx.position("MOM-TEST") < 0,
+                "in a steadily falling market, the momentum trader ends up net SHORT "
+                        + "(it sold into the decline, amplifying it) -- actual position: " + ctx.position("MOM-TEST"));
+    }
+
     private void testDetectsUptrendAndBuys(TestReport report) {
         SimulationContext ctx = new SimulationContext(12);
         MomentumTrader trader = new MomentumTrader("MOM-TEST", 1.0, 3, 6, 0.01, 5);
